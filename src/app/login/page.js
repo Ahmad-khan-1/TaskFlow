@@ -8,6 +8,7 @@ import ThemeToggle from "@/components/theme-toggle";
 export default function LoginPage() {
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
 
   const handleChange = (e) => {
@@ -17,19 +18,21 @@ export default function LoginPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    setIsSubmitting(true);
 
     const res = await signIn("credentials", {
       email: formData.email,
       password: formData.password,
-      redirect: false, // manually redirect karenge
+      redirect: false,
     });
 
     if (res?.error) {
       setError(res.error);
+      setIsSubmitting(false);
       return;
     }
 
-    router.push("/todos"); // login successful, redirect to todos page
+    router.push("/todos");
   };
 
   return (
@@ -50,7 +53,9 @@ export default function LoginPage() {
 
         {error && (
           <div className="bg-red-50 dark:bg-red-950/50 border-l-4 border-red-500 p-4 rounded-r-md">
-            <p className="text-sm text-red-700 dark:text-red-400 font-medium">{error}</p>
+            <p className="text-sm text-red-700 dark:text-red-400 font-medium">
+              {error}
+            </p>
           </div>
         )}
 
@@ -90,9 +95,10 @@ export default function LoginPage() {
           <div>
             <button
               type="submit"
-              className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-semibold rounded-xl text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-200 shadow-md shadow-indigo-100 dark:shadow-indigo-900/20"
+              disabled={isSubmitting}
+              className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-semibold rounded-xl text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-200 shadow-md shadow-indigo-100 dark:shadow-indigo-900/20 disabled:cursor-not-allowed disabled:opacity-70"
             >
-              Login
+              {isSubmitting ? "Signing in..." : "Login"}
             </button>
           </div>
         </form>
