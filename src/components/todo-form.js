@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 
+[{}, {}, {}];
+
 const CATEGORIES = [
   { name: "Personal", color: "#3B82F6" },
   { name: "Work", color: "#6366F1" },
@@ -59,7 +61,7 @@ export default function TodoForm({ onSubmit, initialData, onCancel }) {
         className="w-full rounded-lg border border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
       />
 
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
         <select
           value={priority}
           onChange={(e) => setPriority(e.target.value)}

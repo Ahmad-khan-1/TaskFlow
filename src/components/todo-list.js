@@ -1,63 +1,105 @@
 "use client";
 
-import { useMemo, useOptimistic, useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import TodoForm from "./todo-form";
 import TodoItem from "./todo-item";
 
 export default function TodoList({ initialTodos, userId }) {
   const [todos, setTodos] = useState(initialTodos);
-  const [optimisticTodos, setOptimisticTodos] = useOptimistic(
-    todos,
-    (currentTodos, updater) => updater(currentTodos),
-  );
-  const [isPending, startTransition] = useTransition();
+  const [isPending] = useTransition();
   const [error, setError] = useState("");
   const [filter, setFilter] = useState("all"); // all | active | completed
   const [sortBy, setSortBy] = useState("newest"); // newest | priority | dueDate
 
   const addTodo = async (data) => {
     setError("");
-    const res = await fetch("/api/todos", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...data, userId }),
-    });
-    const result = await res.json();
+    const tempId =
+      typeof crypto !== "undefined" && crypto.randomUUID
+        ? crypto.randomUUID()
+        : Date.now().toString();
 
-    if (!res.ok) {
-      setError(result.error || "Failed to add todo");
-      return;
+    const tempTodo = {
+      _id: tempId,
+      title: data.title,
+      priority: data.priority,
+      category: data.category,
+      dueDate: data.dueDate,
+      isCompleted: false,
+      userId,
+      createdAt: new Date().toISOString(),
+    };
+
+    setTodos((prevTodos) => [tempTodo, ...prevTodos]);
+
+    try {
+      const res = await fetch("/api/todos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...data, userId }),
+      });
+      const result = await res.json();
+
+      if (!res.ok) {
+        throw new Error(result.error || "Failed to add todo");
+      }
+
+      setTodos((prevTodos) =>
+        prevTodos.map((todo) => (todo._id === tempId ? result.todo : todo)),
+      );
+    } catch (err) {
+      setTodos((prevTodos) => prevTodos.filter((todo) => todo._id !== tempId));
+      setError(err.message || "Failed to add todo");
     }
-    setTodos([result.todo, ...todos]);
   };
 
   const editTodo = async (id, data) => {
     setError("");
-    const res = await fetch(`/api/todos/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-    const result = await res.json();
+    let previousTodo;
 
-    if (!res.ok) {
-      setError(result.error || "Failed to update todo");
-      return;
+    setTodos((prevTodos) =>
+      prevTodos.map((todo) => {
+        if (todo._id === id) {
+          previousTodo = todo;
+          return { ...todo, ...data };
+        }
+        return todo;
+      }),
+    );
+
+    try {
+      const res = await fetch(`/api/todos/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      const result = await res.json();
+
+      if (!res.ok) {
+        throw new Error(result.error || "Failed to update todo");
+      }
+
+      setTodos((prevTodos) =>
+        prevTodos.map((todo) => (todo._id === id ? result.todo : todo)),
+      );
+    } catch (err) {
+      if (previousTodo) {
+        setTodos((prevTodos) =>
+          prevTodos.map((todo) => (todo._id === id ? previousTodo : todo)),
+        );
+      }
+      setError(err.message || "Failed to update todo");
     }
-    setTodos(todos.map((t) => (t._id === id ? result.todo : t)));
   };
 
   const toggleComplete = async (id, currentStatus) => {
     setError("");
     const nextStatus = !currentStatus;
 
-    startTransition(() => {
-      setOptimisticTodos((currentTodos) =>
-        currentTodos.map((todo) =>
-          todo._id === id ? { ...todo, isCompleted: nextStatus } : todo,
-        ),
-      );
-    });
+    setTodos((prevTodos) =>
+      prevTodos.map((todo) =>
+        todo._id === id ? { ...todo, isCompleted: nextStatus } : todo,
+      ),
+    );
 
     try {
       const res = await fetch(`/api/todos/${id}`, {
@@ -74,33 +116,48 @@ export default function TodoList({ initialTodos, userId }) {
       setTodos((prevTodos) =>
         prevTodos.map((todo) => (todo._id === id ? result.todo : todo)),
       );
-    } catch (error) {
-      startTransition(() => {
-        setOptimisticTodos((currentTodos) =>
-          currentTodos.map((todo) =>
-            todo._id === id ? { ...todo, isCompleted: currentStatus } : todo,
-          ),
-        );
-      });
-      setError(error.message || "Failed to update todo");
-      throw error;
+    } catch (err) {
+      setTodos((prevTodos) =>
+        prevTodos.map((todo) =>
+          todo._id === id ? { ...todo, isCompleted: currentStatus } : todo,
+        ),
+      );
+      setError(err.message || "Failed to update todo");
     }
   };
 
   const deleteTodo = async (id) => {
     setError("");
-    const res = await fetch(`/api/todos/${id}`, { method: "DELETE" });
+    let deletedTodo;
+    let deletedIndex = -1;
 
-    if (!res.ok) {
-      const result = await res.json();
-      setError(result.error || "Failed to delete todo");
-      return;
+    setTodos((prevTodos) => {
+      deletedIndex = prevTodos.findIndex((todo) => todo._id === id);
+      if (deletedIndex === -1) return prevTodos;
+      deletedTodo = prevTodos[deletedIndex];
+      return prevTodos.filter((todo) => todo._id !== id);
+    });
+
+    try {
+      const res = await fetch(`/api/todos/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const result = await res.json();
+        throw new Error(result.error || "Failed to delete todo");
+      }
+    } catch (err) {
+      if (deletedTodo && deletedIndex >= 0) {
+        setTodos((prevTodos) => {
+          const nextTodos = [...prevTodos];
+          nextTodos.splice(deletedIndex, 0, deletedTodo);
+          return nextTodos;
+        });
+      }
+      setError(err.message || "Failed to delete todo");
     }
-    setTodos(todos.filter((t) => t._id !== id));
   };
 
   const visibleTodos = useMemo(() => {
-    let result = [...optimisticTodos];
+    let result = [...todos];
 
     if (filter === "active") result = result.filter((t) => !t.isCompleted);
     if (filter === "completed") result = result.filter((t) => t.isCompleted);
@@ -121,7 +178,7 @@ export default function TodoList({ initialTodos, userId }) {
     }
 
     return result;
-  }, [optimisticTodos, filter, sortBy]);
+  }, [todos, filter, sortBy]);
 
   return (
     <div>

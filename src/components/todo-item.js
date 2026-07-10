@@ -129,17 +129,17 @@ export default function TodoItem({
         </div>
       </div>
 
-      <div className="opacity-0 group-hover:opacity-100 flex gap-3 transition-opacity">
+      <div className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 flex gap-3 transition-opacity">
         <button
           onClick={() => setIsEditing(true)}
-          className="text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 text-sm"
+          className="text-slate-500 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 text-sm"
         >
           Edit
         </button>
         <button
           onClick={handleDelete}
           disabled={busy || isPending}
-          className="text-slate-400 hover:text-red-500 dark:hover:text-red-400 text-sm"
+          className="text-slate-500 dark:text-slate-300 hover:text-red-500 dark:hover:text-red-400 text-sm"
         >
           Delete
         </button>

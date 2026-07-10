@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import ThemeToggle from "@/components/theme-toggle";
 
 export default function LoginPage() {
@@ -102,6 +103,13 @@ export default function LoginPage() {
             </button>
           </div>
         </form>
+
+        <p className="mt-4 text-center text-sm text-slate-500">
+          Don&apos;t have an account?{' '}
+          <Link href="/signup" className="text-indigo-600 font-medium hover:underline">
+            Sign up
+          </Link>
+        </p>
       </div>
     </div>
   );
